@@ -59,22 +59,23 @@ services:
     image: gtri/mdi-fhir-server:latest
     container_name: raven-fhir-server
     ports:
-      - "9080:8080"
+      - "9080:9080"
     environment:
       - JDBC_URL=jdbc:postgresql://raven_fhir_fhirbase:5432/cmsr4
       - JDBC_USERNAME=postgres
       - JDBC_PASSWORD=mynewpassword
       - JDBC_POOLSIZE=5
+      - TOMCAT_PORT=9080
       - SMART_INTROSPECTURL=
       - SMART_AUTHSERVERURL=
       - SMART_TOKENSERVERURL=
       - AUTH_BASIC=client:secret
       - FHIR_READONLY=False
       - SERVERBASE_URL=http://localhost:9080/mdi-fhir-server/fhir
-      - INTERNAL_FHIR_REQUEST_URL=http://localhost:8080/mdi-fhir-server/fhir
+      - INTERNAL_FHIR_REQUEST_URL=http://localhost:9080/mdi-fhir-server/fhir
       - SERVER_VERSION=v2026-03-27.3.0.0-draft
       - SERVER_TYPE=cms
-      - AUTH_AUDIENCE=bluejay-fhir-server-test-client
+      - AUTH_AUDIENCE=raven-fhir-server-test-client
       - AUTH_ISSUER_URL=http://host.docker.internal:8080/realms/Raven-MDI
     networks:
       - raven-network
@@ -86,19 +87,20 @@ services:
     image: gtri/mdi-fhir-server:latest
     container_name: bluejay-fhir-server
     ports:
-      - "9090:8080"
+      - "9090:9090"
     environment:
       - JDBC_URL=jdbc:postgresql://bluejay_fhir_fhirbase:5432/cmsr4
       - JDBC_USERNAME=postgres
       - JDBC_PASSWORD=mynewpassword
       - JDBC_POOLSIZE=5
+      - TOMCAT_PORT=9090
       - SMART_INTROSPECTURL=
       - SMART_AUTHSERVERURL=
       - SMART_TOKENSERVERURL=
       - AUTH_BASIC=client:secret
       - FHIR_READONLY=False
       - SERVERBASE_URL=http://localhost:9090/mdi-fhir-server/fhir
-      - INTERNAL_FHIR_REQUEST_URL=http://localhost:8080/mdi-fhir-server/fhir
+      - INTERNAL_FHIR_REQUEST_URL=http://localhost:9090/mdi-fhir-server/fhir
       - SERVER_VERSION=v2026-03-27.3.0.0-draft
       - SERVER_TYPE=edrs
       - AUTH_AUDIENCE=bluejay-fhir-server-test-client
