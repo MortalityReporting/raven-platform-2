@@ -71,8 +71,9 @@ services:
       - SMART_TOKENSERVERURL=
       - AUTH_BASIC=client:secret
       - FHIR_READONLY=False
-      - SERVERBASE_URL=http://localhost:9080/mdi-fhir-server/fhir
-      - INTERNAL_FHIR_REQUEST_URL=http://localhost:9080/mdi-fhir-server/fhir
+      - SERVER_PATH=raven-fhir-server
+      - SERVERBASE_URL=http://localhost:9080/raven-fhir-server/fhir
+      - INTERNAL_FHIR_REQUEST_URL=http://localhost:9080/raven-fhir-server/fhir
       - SERVER_VERSION=v2026-03-27.3.0.0-draft
       - SERVER_TYPE=cms
       - AUTH_AUDIENCE=raven-fhir-server-test-client
@@ -99,8 +100,9 @@ services:
       - SMART_TOKENSERVERURL=
       - AUTH_BASIC=client:secret
       - FHIR_READONLY=False
-      - SERVERBASE_URL=http://localhost:9090/mdi-fhir-server/fhir
-      - INTERNAL_FHIR_REQUEST_URL=http://localhost:9090/mdi-fhir-server/fhir
+      - SERVER_PATH=bluejay-fhir-server
+      - SERVERBASE_URL=http://localhost:9090/bluejay-fhir-server/fhir
+      - INTERNAL_FHIR_REQUEST_URL=http://localhost:9090/bluejay-fhir-server/fhir
       - SERVER_VERSION=v2026-03-27.3.0.0-draft
       - SERVER_TYPE=edrs
       - AUTH_AUDIENCE=bluejay-fhir-server-test-client
@@ -110,6 +112,22 @@ services:
     depends_on:
       bluejay_fhir_fhirbase:
         condition: service_healthy
+
+  raven-import-api:
+    image: gtri/mdi-import-submit-api:latest
+    container_name: raven-import-api
+    ports:
+      - "9999:8080"
+    environment:
+      - FHIRCMS_URL=http://raven-fhir-server:9080/raven-fhir-server/fhir
+      - FHIRCMS_BASIC_USERNAME=client
+      - FHIRCMS_BASIC_PASSWORD=secret
+      - SUBMISSION_BASIC_PASSWORD=secret
+      - SUBMISSION_BASIC_USERNAME=client
+      - SUBMISSION_URL=http://raven-fhir-server:9080/raven-fhir-server/fhir
+      - MY_URL=http://localhost:9999/raven-import-and-submit-api
+    networks:
+      - raven-network
 
 networks:
   raven-network:
