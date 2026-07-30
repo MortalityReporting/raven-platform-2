@@ -1,0 +1,14 @@
+{
+    "version": "", 
+    "title": "Raven", 
+    "dashboardApiUrl": "", 
+    "ravenFhirServerBaseUrl": "http://localhost:9080/mdi-fhir-server/fhir", 
+    "ravenFhirServerBasicAuth": "client:secret", 
+    "ravenImportApiUrl": "https://raven.dev.heat.icl.gtri.org/raven-import-api", 
+    "fhirValidatorUrl": "https://dev.heat.icl.gtri.org/fhir-validator-service/fhir", 
+    "blueJayServerBaseUrl": "http://localhost:9090/bluejay-fhir-server/fhir", 
+    "blueJayServerBasicAuth": "client:secret", 
+    "adminRedirectUrl": "https://localhost:4200/admin-panel", 
+    "adminLogoutUrl": "https://localhost:4200/", 
+    "logFhirRequests": false
+}
