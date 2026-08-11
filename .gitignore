@@ -1,3 +1,5 @@
 .DS_Store
 fhir-validator-service/
 raven-dashboard/
+raven-import-and-submit-api/
+import-templates/

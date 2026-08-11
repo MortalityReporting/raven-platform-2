@@ -19,5 +19,14 @@
       "audience": ""
     }
   },
-  "enableDashboardApiServices": false
+  "enableDashboardApiServices": false,
+  "workflowSimulator": {
+    "searchEdrsOAuthCredentials": {
+      "grantType": "client_credentials",
+      "accessTokenUrl": "http://localhost:8080/realms/Raven-MDI/protocol/openid-connect/token",
+      "clientId": "raven-dashboard-user",
+      "clientSecret": "examplepassword",
+      "contentType": "application/x-www-form-urlencoded"
+    }
+  }
 }
