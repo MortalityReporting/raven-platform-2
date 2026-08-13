@@ -796,7 +796,7 @@
         "http://localhost"
       ],
       "webOrigins": [
-        ""
+        "http://localhost"
       ],
       "notBefore": 0,
       "bearerOnly": false,
