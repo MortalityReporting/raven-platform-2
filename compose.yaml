@@ -1,16 +1,18 @@
 services:
   raven-dashboard:
-    build:
-      context: ./raven-dashboard
-      dockerfile: Dockerfile2
-      args:
-        BASE_HREF: /
-    container_name: raven-dashboard
+    image: gtri/mdi-dashboard:latest
+    # build:
+    #   context: ./raven-dashboard
+    #   dockerfile: Dockerfile2
+    #   args:
+    #     BASE_HREF: /
+    container_name: mdi-dashboard
     ports:
       - "80:80"
-    volumes:
-      - ./config/config.json:/usr/share/nginx/html/assets/config/config.json:ro
+    # volumes:
+    #   - ./config/config.json:/usr/share/nginx/html/assets/config/config.json:ro
     restart: unless-stopped
+
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     command: ["start-dev", "--import-realm"]
