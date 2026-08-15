@@ -2,13 +2,17 @@
 
 A reference implementation and testing platform for the Medicolegal Death Investigation (MDI) Implementation Guide. The Raven MDI Platform provides examples of MDI related operations, FHIR profiles, and workflows. The platform also provides additional features to support testing events such as document generation, document comparison, client and server interactions, and FHIR validation.
 
-## Community Edition versus Full Edition
+## Editions and Features
+
+### Community Edition versus Full Edition
 
 The Raven MDI Platform is divided into two editions, the regular full edition and the community edition. The community edition omits testing event management features present in the full edition to decrease the footprint and streamline relevant features for most users who would deploy the application stack.
 
 The full edition includes multiple additional components such as a authorization required backend service to support testing events with user management and a file server in which event results are stored. 
 
 Please contact the developers if you are interested in deploying the full edition.
+
+### Features
 
 | Feature                      | Community Edition | Full Edition |
 |------------------------------|-------------------|--------------|
@@ -19,15 +23,28 @@ Please contact the developers if you are interested in deploying the full editio
 | Workflow Simulator           | ✓                 | ✓            |
 | Testing Event Management     | —                 | ✓            |
 
-## Docker Compose Deployment
-The Raven MDI Platform Community Edition is functional out of the box.
+// **TODO** FILL IN WITH OUR BOILER PLATE FOR FEATURES
 
-To run, with Docker (e.g., Docker Desktop) installed, execute the following command:
+## Docker Compose Deployment
+
+The Raven MDI Platform Community Edition is functional out of the box using Docker Compose.
+
+### Prerequisites
+
+* Docker (e.g., Docker Desktop)
+
+// **TODO** Memory estimates, etc.
+
+### Instructions
+To run, with Docker installed, execute the following command:
 ```
 docker compose up
 ```
 ### Troubleshooting Port Conflicts
 If a piece of the Docker Compose stack has a port conflicting with another application locally, the ports may be changed in the `compose.yaml` file. Whenever a port is changed the relevant references must be updated in the settings of other components, also in the `compose.yaml` file. For changing any of the backend services settings, this should also be updated in the UI `config.json` through the volume mounting method discussed above.
+
+### Notes on Keycloak
+The Raven MDI Platform leverages KeyCloak as an open source authentication server that can be distributed as part of the package. The deployment includes a default Realm configuration for Keycloak aligning with the authenitcation declared in the `compose.yaml`.
 
 ### Overriding Dashboard Settings
 > **WARNING:** The Raven MDI Dashboard configuration exposes non-sensitive authentication credentials by design for demonstration purposes in the Search EDRS Workflow Simulator settings. Users should not use sensitive credentials in these fields.
@@ -80,3 +97,5 @@ The image's default `config.json` settings are as follows. This template can be 
   }
 }
 ```
+> **NOTE:** The Raven MDI Platform has only been tested with Keycloak and Auth0, though most authentication services should work. If swapping to Auth0, the `searchEdrsOAuthCredentials` settings also allow an `audience` field which may used to support the way Auth0 identifies API registrations.
+
