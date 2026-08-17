@@ -32,8 +32,10 @@ The Raven MDI Platform Community Edition is functional out of the box using Dock
 ### Prerequisites
 
 * Docker (e.g., Docker Desktop)
+* 16 GB RAM for optimal performance
+* 10 GB disk space
 
-// **TODO** Memory estimates, etc.
+Note: The majority of resource usage is the FHIR Validator. To run on a lower end device, the validator can be removed from the compose file, though this will also disallow importing via FHIR JSON (using CSV/XLSX templates will still work).
 
 ### Instructions
 To run, with Docker installed, execute the following command:
