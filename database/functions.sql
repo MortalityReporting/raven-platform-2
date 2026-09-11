@@ -1,0 +1,209 @@
+-- Functions exported from the source database.
+SET search_path = public, pg_catalog;
+CREATE OR REPLACE FUNCTION public._fhirbase_to_resource(x _resource)
+ RETURNS jsonb
+ LANGUAGE sql
+AS $function$
+ select x.resource || jsonb_build_object(
+  'resourceType', x.resource_type,
+  'id', x.id,
+  'meta', coalesce(x.resource->'meta', '{}'::jsonb) || jsonb_build_object(
+    'lastUpdated', x.ts,
+    'versionId', x.txid::text
+  )
+ );
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_create(resource jsonb, txid bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  _sql text;
+  rt text;
+  rid text;
+  result jsonb;
+BEGIN
+    rt   := resource->>'resourceType';
+    rid  := coalesce(resource->>'id', fhirbase_genid());
+    _sql := format($SQL$
+      WITH archived AS (
+        INSERT INTO %s (id, txid, ts, status, resource)
+        SELECT id, txid, ts, status, resource
+        FROM %s
+        WHERE id = $2
+        RETURNING *
+      ), inserted AS (
+         INSERT INTO %s (id, ts, txid, status, resource)
+         VALUES ($2, current_timestamp, $1, 'created', $3)
+         ON CONFLICT (id)
+         DO UPDATE SET
+          txid = $1,
+          ts = current_timestamp,
+          status = 'recreated',
+          resource = $3
+         RETURNING *
+      )
+
+      select _fhirbase_to_resource(i.*) from inserted i
+
+      $SQL$,
+      rt || '_history', rt, rt, rt);
+
+  EXECUTE _sql
+  USING txid, rid, jsonb_set(resource, '{id}', to_jsonb(rid::text), true)
+  INTO result;
+
+  return result;
+
+END
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_create(resource jsonb)
+ RETURNS jsonb
+ LANGUAGE sql
+AS $function$
+   SELECT fhirbase_create(resource, nextval('transaction_id_seq'));
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_delete(resource_type text, id text, txid bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  _sql text;
+  rt text;
+  rid text;
+  result jsonb;
+BEGIN
+    rt   := resource_type;
+    rid  := id;
+    _sql := format($SQL$
+      WITH archived AS (
+        INSERT INTO %s (id, txid, ts, status, resource)
+        SELECT id, txid, ts, status, resource
+        FROM %s WHERE id = $2
+        RETURNING *
+      ), deleted AS (
+         INSERT INTO %s (id, txid, ts, status, resource)
+         SELECT id, $1, current_timestamp, status, resource
+         FROM %s WHERE id = $2
+         RETURNING *
+      ), dropped AS (
+         DELETE FROM %s WHERE id = $2 RETURNING *
+      )
+      select _fhirbase_to_resource(i.*) from archived i
+
+      $SQL$,
+      rt || '_history', '"' || rt || '"', rt || '_history', '"' || rt || '"', '"' || rt || '"');
+
+  EXECUTE _sql
+  USING txid, rid
+  INTO result;
+
+  return result;
+
+END
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_delete(resource_type text, id text)
+ RETURNS jsonb
+ LANGUAGE sql
+AS $function$
+   SELECT fhirbase_delete(resource_type, id, nextval('transaction_id_seq'));
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_genid()
+ RETURNS text
+ LANGUAGE sql
+AS $function$
+  select gen_random_uuid()::text
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_read(resource_type text, id text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  _sql text;
+  result jsonb;
+BEGIN
+  _sql := format($SQL$
+    SELECT _fhirbase_to_resource(row(r.*)::_resource) FROM %s r WHERE r.id = $1
+  $SQL$,
+  resource_type
+  );
+
+  EXECUTE _sql USING id INTO result;
+
+  return result;
+END
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_update(resource jsonb, txid bigint)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  _sql text ;
+  rt text;
+  rid text;
+  result jsonb;
+BEGIN
+    rt   := resource->>'resourceType';
+    rid  := resource->>'id';
+
+    CASE WHEN (rid IS NULL) THEN
+      RAISE EXCEPTION 'Resource does not have and id' USING HINT = 'Resource does not have and id';
+    ELSE
+    END CASE;
+
+    _sql := format($SQL$
+      WITH archived AS (
+        INSERT INTO %s (id, txid, ts, status, resource)
+        SELECT id, txid, ts, status, resource
+        FROM %s
+        WHERE id = $2
+        RETURNING *
+      ), inserted AS (
+         INSERT INTO %s (id, ts, txid, status, resource)
+         VALUES ($2, current_timestamp, $1, 'created', $3)
+         ON CONFLICT (id)
+         DO UPDATE SET
+          txid = $1,
+          ts = current_timestamp,
+          status = 'updated',
+          resource = $3
+         RETURNING *
+      )
+
+      select _fhirbase_to_resource(i.*) from inserted i
+
+      $SQL$,
+      rt || '_history', rt, rt, rt);
+
+  EXECUTE _sql
+  USING txid, rid, (resource - 'id')
+  INTO result;
+
+  return result;
+
+END
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_update(resource jsonb)
+ RETURNS jsonb
+ LANGUAGE sql
+AS $function$
+   SELECT fhirbase_update(resource, nextval('transaction_id_seq'));
+$function$
+;
+

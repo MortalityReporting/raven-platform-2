@@ -1,0 +1,298 @@
+services:
+  raven-dashboard:
+    image: gtri/mdi-dashboard:latest
+    # build:
+    #   context: ./raven-dashboard
+    #   dockerfile: Dockerfile2
+    #   args:
+    #     BASE_HREF: /
+    container_name: mdi-dashboard
+    ports:
+      - "80:80"
+    # volumes:
+    #   - ./config/config.json:/usr/share/nginx/html/assets/config/config.json:ro
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    command: ["start-dev", "--import-realm"]
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount the individual file or the entire directory
+      - ./keycloak-config/realm-export.json:/opt/keycloak/data/import/realm-export.json
+
+  # One PostgreSQL server hosts separate databases for Raven and Bluejay.
+  postgresql:
+    image: postgres:latest
+    container_name: raven-postgresql
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/target_password
+    secrets:
+      - target_password
+    ports:
+      - "9432:5432"
+    networks:
+      - raven-network
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  raven-fhir-server:
+    image: gtri/mdi-fhir-server:latest
+    container_name: raven-fhir-server
+    ports:
+      - "9080:9080"
+    environment:
+      TARGET_HOST: postgresql
+      TARGET_PORT: 5432
+      TARGET_ADMIN_DB: postgres
+      TARGET_USER: postgres
+      FHIR_DATABASE: raven_r4
+      JDBC_URL: jdbc:postgresql://postgresql:5432/raven_r4
+      JDBC_USERNAME: postgres
+      JDBC_POOLSIZE: 5
+      TOMCAT_PORT: 9080
+      SMART_INTROSPECTURL: ""
+      SMART_AUTHSERVERURL: ""
+      SMART_TOKENSERVERURL: ""
+      AUTH_BASIC: client:secret
+      FHIR_READONLY: "False"
+      SERVER_PATH: raven-fhir-server
+      SERVERBASE_URL: http://localhost:9080/raven-fhir-server/fhir
+      INTERNAL_FHIR_REQUEST_URL: http://localhost:9080/raven-fhir-server/fhir
+      SERVER_VERSION: v2026-03-27.3.0.0-draft
+      SERVER_TYPE: cms
+      AUTH_AUDIENCE: raven-fhir-server-test-client
+      AUTH_ISSUER_URL: http://host.docker.internal:8080/realms/Raven-MDI
+    secrets:
+      - target_password
+    volumes:
+      - ./database/schema.sql:/opt/cmsr4-schema.sql:ro
+      - ./database/functions.sql:/opt/cmsr4-functions.sql:ro
+      - ./database/data.sql:/opt/cmsr4-data.sql:ro
+    networks:
+      - raven-network
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+          # The application container owns creation and initialization of the
+          # Raven database; no separate setup container is required.
+          apt-get update && \
+            apt-get install -y --no-install-recommends postgresql-client && \
+            rm -rf /var/lib/apt/lists/*
+
+          export PGPASSWORD="$$(cat /run/secrets/target_password)"
+
+          attempt=0
+          until pg_isready \
+            -h "$${TARGET_HOST}" \
+            -p "$${TARGET_PORT}" \
+            -U "$${TARGET_USER}" \
+            -d "$${TARGET_ADMIN_DB}"; do
+            attempt=$$((attempt + 1))
+            if [ "$${attempt}" -ge 30 ]; then
+              echo "PostgreSQL server did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          database_exists="$$(psql -XAt -v ON_ERROR_STOP=1 \
+            -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" -U "$${TARGET_USER}" \
+            -d "$${TARGET_ADMIN_DB}" -v "target_db=$${FHIR_DATABASE}" <<'SQL'
+          SELECT 1 FROM pg_database WHERE datname = :'target_db';
+          SQL
+          )"
+
+          if [ "$${database_exists}" != "1" ]; then
+            echo "Creating Raven database $${FHIR_DATABASE}"
+            createdb -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" --maintenance-db="$${TARGET_ADMIN_DB}" \
+              "$${FHIR_DATABASE}"
+          else
+            echo "Raven database already exists: $${FHIR_DATABASE}"
+          fi
+
+          initialized="$$(psql -XAt -v ON_ERROR_STOP=1 \
+            -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" -U "$${TARGET_USER}" \
+            -d "$${FHIR_DATABASE}" \
+            -c "SELECT 1 FROM pg_catalog.pg_tables WHERE schemaname = 'public' AND tablename = '_compose_database_initialized';")"
+
+          if [ "$${initialized}" != "1" ]; then
+            psql -X -v ON_ERROR_STOP=1 -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" -d "$${FHIR_DATABASE}" \
+              --single-transaction --file=/opt/cmsr4-schema.sql
+            psql -X -v ON_ERROR_STOP=1 -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" -d "$${FHIR_DATABASE}" \
+              --single-transaction --file=/opt/cmsr4-functions.sql
+            psql -X -v ON_ERROR_STOP=1 -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" -d "$${FHIR_DATABASE}" \
+              --single-transaction --file=/opt/cmsr4-data.sql
+            psql -X -v ON_ERROR_STOP=1 -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" -d "$${FHIR_DATABASE}" \
+              -c "CREATE TABLE IF NOT EXISTS public._compose_database_initialized (id boolean PRIMARY KEY); INSERT INTO public._compose_database_initialized (id) VALUES (true) ON CONFLICT (id) DO NOTHING;"
+          else
+            echo "Raven database schema is already initialized"
+          fi
+
+          export JDBC_PASSWORD="$${PGPASSWORD}"
+          exec /usr/local/bin/runtime-setup.sh catalina.sh run
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+  bluejay-fhir-server:
+    image: gtri/mdi-fhir-server:latest
+    container_name: bluejay-fhir-server
+    ports:
+      - "9090:9090"
+    environment:
+      TARGET_HOST: postgresql
+      TARGET_PORT: 5432
+      TARGET_ADMIN_DB: postgres
+      TARGET_USER: postgres
+      FHIR_DATABASE: bluejay_r4
+      JDBC_URL: jdbc:postgresql://postgresql:5432/bluejay_r4
+      JDBC_USERNAME: postgres
+      JDBC_POOLSIZE: 5
+      TOMCAT_PORT: 9090
+      SMART_INTROSPECTURL: ""
+      SMART_AUTHSERVERURL: ""
+      SMART_TOKENSERVERURL: ""
+      AUTH_BASIC: client:secret
+      FHIR_READONLY: "False"
+      SERVER_PATH: bluejay-fhir-server
+      SERVERBASE_URL: http://localhost:9090/bluejay-fhir-server/fhir
+      INTERNAL_FHIR_REQUEST_URL: http://localhost:9090/bluejay-fhir-server/fhir
+      SERVER_VERSION: v2026-03-27.3.0.0-draft
+      SERVER_TYPE: edrs
+      AUTH_AUDIENCE: bluejay-fhir-server-test-client
+      AUTH_ISSUER_URL: http://host.docker.internal:8080/realms/Raven-MDI
+    secrets:
+      - target_password
+    volumes:
+      - ./database/schema.sql:/opt/cmsr4-schema.sql:ro
+      - ./database/functions.sql:/opt/cmsr4-functions.sql:ro
+      - ./database/data.sql:/opt/cmsr4-data.sql:ro
+    networks:
+      - raven-network
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+          # The application container owns creation and initialization of the
+          # Bluejay database; no separate setup container is required.
+          apt-get update && \
+            apt-get install -y --no-install-recommends postgresql-client && \
+            rm -rf /var/lib/apt/lists/*
+
+          export PGPASSWORD="$$(cat /run/secrets/target_password)"
+
+          attempt=0
+          until pg_isready \
+            -h "$${TARGET_HOST}" \
+            -p "$${TARGET_PORT}" \
+            -U "$${TARGET_USER}" \
+            -d "$${TARGET_ADMIN_DB}"; do
+            attempt=$$((attempt + 1))
+            if [ "$${attempt}" -ge 30 ]; then
+              echo "PostgreSQL server did not become ready" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          database_exists="$$(psql -XAt -v ON_ERROR_STOP=1 \
+            -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" -U "$${TARGET_USER}" \
+            -d "$${TARGET_ADMIN_DB}" -v "target_db=$${FHIR_DATABASE}" <<'SQL'
+          SELECT 1 FROM pg_database WHERE datname = :'target_db';
+          SQL
+          )"
+
+          if [ "$${database_exists}" != "1" ]; then
+            echo "Creating Bluejay database $${FHIR_DATABASE}"
+            createdb -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" --maintenance-db="$${TARGET_ADMIN_DB}" \
+              "$${FHIR_DATABASE}"
+          else
+            echo "Bluejay database already exists: $${FHIR_DATABASE}"
+          fi
+
+          initialized="$$(psql -XAt -v ON_ERROR_STOP=1 \
+            -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" -U "$${TARGET_USER}" \
+            -d "$${FHIR_DATABASE}" \
+            -c "SELECT 1 FROM pg_catalog.pg_tables WHERE schemaname = 'public' AND tablename = '_compose_database_initialized';")"
+
+          if [ "$${initialized}" != "1" ]; then
+            psql -X -v ON_ERROR_STOP=1 -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" -d "$${FHIR_DATABASE}" \
+              --single-transaction --file=/opt/cmsr4-schema.sql
+            psql -X -v ON_ERROR_STOP=1 -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" -d "$${FHIR_DATABASE}" \
+              --single-transaction --file=/opt/cmsr4-functions.sql
+            psql -X -v ON_ERROR_STOP=1 -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" -d "$${FHIR_DATABASE}" \
+              --single-transaction --file=/opt/cmsr4-data.sql
+            psql -X -v ON_ERROR_STOP=1 -h "$${TARGET_HOST}" -p "$${TARGET_PORT}" \
+              -U "$${TARGET_USER}" -d "$${FHIR_DATABASE}" \
+              -c "CREATE TABLE IF NOT EXISTS public._compose_database_initialized (id boolean PRIMARY KEY); INSERT INTO public._compose_database_initialized (id) VALUES (true) ON CONFLICT (id) DO NOTHING;"
+          else
+            echo "Bluejay database schema is already initialized"
+          fi
+
+          export JDBC_PASSWORD="$${PGPASSWORD}"
+          exec /usr/local/bin/runtime-setup.sh catalina.sh run
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+  raven-import-api:
+    image: gtri/mdi-import-submit-api:latest
+    container_name: raven-import-api
+    ports:
+      - "9999:8080"
+    environment:
+      - FHIRCMS_URL=http://raven-fhir-server:9080/raven-fhir-server/fhir
+      - FHIRCMS_BASIC_USERNAME=client
+      - FHIRCMS_BASIC_PASSWORD=secret
+      - SUBMISSION_BASIC_PASSWORD=secret
+      - SUBMISSION_BASIC_USERNAME=client
+      - SUBMISSION_URL=http://raven-fhir-server:9080/raven-fhir-server/fhir
+      - MY_URL=http://localhost:9999/raven-import-and-submit-api
+    networks:
+      - raven-network
+
+  fhir-validator:
+    image: gtri/mdi-validator:latest
+    container_name: fhir-validator
+    ports:
+      - "9888:8080"
+    environment:
+      - PACKAGES=hl7.fhir.us.vr-common-library#2.0.0,hl7.fhir.us.vdor#0.1.1-cibuild,hl7.fhir.us.mdi#3.0.0-draft,hl7.fhir.us.mdi#2.0.0,hl7.fhir.us.bser#2.0.0-ballot,hl7.fhir.us.vrdr#3.0.0,hl7.fhir.us.core#5.0.1
+      - DEFAULT_IG=hl7.fhir.us.mdi#3.0.0-draft
+      - INITIAL_LOAD_RESOURCE_PATH=initial_load_resource.json
+      - VALIDATE_INITIAL_LOAD_RESOURCE_ON_STARTUP=true
+      - CI_BUILD_REPOS=hl7.fhir.us.vdor#0.1.1-cibuild=HL7/fhir-vdor,hl7.fhir.us.mdi#3.0.0-draft=HL7/fhir-mdi-ig
+      - CUSTOM_PATH=fhir-validator-service
+    networks:
+      - raven-network
+
+networks:
+  raven-network:
+    driver: bridge
+
+secrets:
+  target_password:
+    file: ./secrets/target_password.txt
+
+volumes:
+  postgres_data:
