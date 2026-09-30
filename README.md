@@ -73,34 +73,54 @@ To support both ends of the MDI and EDRS workflow, the Raven Platform includes t
 
 Both servers use the same base MDI FHIR server component.
 
-## Docker Compose Deployment
+## Getting Started
 
 The Raven MDI Platform Community Edition is functional out of the box using Docker Compose.
 
 ### Prerequisites
-
 * Docker (e.g., Docker Desktop)
 * 16 GB RAM for optimal performance
 * 10 GB disk space
 
-### Quick Start Instructions
-To run, with Docker installed, execute the following command:
-```
+### Running with Docker Compose
+First, clone this repository to your local system. Then from your terminal you can run the Docker Compose stack by executing the following command:
+```shell
 docker compose up
 ```
 This will start the containers as well as provide logs in  the terminal. Alternatively, you may run in "detached mode" without logs by adding the `-d` flag.
 
-Please note that some components may take a few minutes to fully start up. Once everything is ready, you can load the Raven Dashboard at http://localhost.
-
-The community edition does not have user management and no login credentials are required.
+Please note that some components may take a few minutes to fully start up.
 
 #### Stopping the Containers
 To stop the containers, execute the following command:
-```
+```shell
 docker compose down
 ```
 
-### Preloaded "Seed" Data
+### Using the Raven Platform
+Once every container is ready, you can load the Raven Dashboard at http://localhost. Most features of the Raven Platform are provided through the dashboard. The community edition does not have user management and no login credentials are required.
+
+On the landing page of the dashboard, a set of instructional videos are provided walking through use of the dashboard. (Note: The instructional videos may show previous versions and minor visual discrepancies should be expected.) The landing page also includes helpful links to related resources, such as FHIR Implementation Guides, API documents, and more. More external links, such as to GitHub and the Raven documentation, may be found in the hamburger drop down in the top right of the screen, along with version information.
+
+The left navigation menu allows you to move between the sections of the application.
+
+For more information on using the application, please see the [Raven Documentation](https://ravendocs.readthedocs.io/en/latest/index.html).
+
+### Accessing the FHIR Servers Directly
+
+The MDI FHIR Server instances can each be accessed directly through the browser via the HAPI FHIR Interface. Most operations on these servers requires basic authorization, which is set in the Docker Compose file. The default values are:
+
+```text
+Username: client
+Password: secret
+```
+
+The default ports and path to open the interfaces are at http://localhost:9080/raven-fhir-server/ for the Raven FHIR CMS Server and http://localhost:9090/bluejay-fhir-server/ for the BlueJay FHIR EDRS Server.
+
+
+## FAQ/Troubleshooting
+
+### Preloaded "Seed" Data (Decedent Records)
 The Raven and BlueJay MDI FHIR Servers are both automatically loaded with a small set of MDI FHIR IG artifacts for browsing in the Record Viewer or for use in the Workflow Simulator, as well as one comparison tool record.
 
 ### Troubleshooting Port Conflicts
@@ -116,7 +136,7 @@ For the community edition, despite not having user management, Keycloak is still
 
 In order to deploy the dashboard against another FHIR server or non-Docker Compose components, the dashboard images's default settings may be overriden through volume mounting as shown below:
 
-```
+```yaml
   raven-dashboard:
     image: gtri/mdi-dashboard:latest
     container_name: mdi-dashboard
@@ -128,7 +148,7 @@ In order to deploy the dashboard against another FHIR server or non-Docker Compo
 ```
 
 The image's default `config.json` settings are as follows. This template can be modified to point to other services or modified passwords. Please note that because frontends access containers from outside the Docker network (as they are running from your web browser) you should always use external to the docker network URLs (e.g., "localhost:8080").
-```
+```json
 {
   "dashboardApiUrl": "",
   "ravenImportApiUrl": "http://localhost:9999/raven-import-and-submit-api",
