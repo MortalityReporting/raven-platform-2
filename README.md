@@ -41,7 +41,7 @@ The Raven MDI Record Viewer provides a user-friendly "form" style view of MDI FH
 #### Record Comparison
 
 The Record Comparison tool allows a side by side comparison between a user generated MDI and EDRS record and known valid records based on established test cases uses for testing events. 
-1. Coroner Case Management System vendors or other implementers generate records based on the supported test cases using their own system.
+1. Medical Examiners and Coroners (MEC) Case Management System vendors or other implementers generate records based on the supported test cases using their own system.
 2. These records are copy and pasted into the comparison tool as complete FHIR Document Bundles.
 3. The equivalent test case is selected from the Raven MDI FHIR Server.
 4. The tool compares the user generated document with the known valid document to identify any issues, field by field. (Fields align with the primary fields called out by the MDI FHIR IG, including major Death Certificate fields.)
@@ -49,11 +49,11 @@ The Record Comparison tool allows a side by side comparison between a user gener
 
 #### Record Import
 
-The Record Import feature allows users to import a valid MDI workstream FHIR Document or Message Bundle to the Raven MDI FHIR Server to make it available in the Raven platform. For users who are early in implementation and cannot generate FHIR Bundles, spreadsheet (XLSX/CSV) files to capture the major data fields in MDI bundles are provided. These will be mapped into the appropriate FHIR structures and stored on the RAVEN MDI FHIR Server. These cases can then be explored through the Record Viewer in their FHIR formats to provide examples for implementation based on user data.
+The Record Import feature allows users to import a valid MDI workstream FHIR Document or Message Bundle to the Raven MDI FHIR Server to make it available in the Raven platform. For users who are early in implementation and cannot generate FHIR Bundles, spreadsheet (XLSX) or CSV files to capture the major data fields in MDI bundles are provided. These will be mapped into the appropriate FHIR structures and stored on the RAVEN MDI FHIR Server. These cases can then be explored through the Record Viewer in their FHIR formats to provide examples for implementation based on user data.
 
 #### Record Validation
 
-The Record Validation feature is a specialized wrapper for the official HL7 FHIR Validator tool, which provides preloaded MDI and MDI adjacent FHIR IGs to validate against. This includes continuous integration builds as well as proof of concept IGs (such as the Violent Death and Overdose Reporting (VDOR) IG) which may not be available on the official HL7 Validator site or other tools.
+The Record Validation feature is a specialized wrapper for the official HL7 FHIR Validator tool, which provides preloaded MDI and MDI adjacent FHIR IGs to validate against. This includes continuous integration (CI) builds as well as proof of concept IGs (such as the Violent Death and Overdose Reporting (VDOR) IG) which may not be available on the official HL7 Validator site or other tools.
 
 #### Workflow Simulator
 
@@ -82,8 +82,6 @@ The Raven MDI Platform Community Edition is functional out of the box using Dock
 * Docker (e.g., Docker Desktop)
 * 16 GB RAM for optimal performance
 * 10 GB disk space
-
-Note: The majority of resource usage is the FHIR Validator. To run on a lower end device, the validator can be removed from the compose file, though this will also disallow importing via FHIR JSON (using CSV/XLSX templates will still work).
 
 ### Quick Start Instructions
 To run, with Docker installed, execute the following command:
