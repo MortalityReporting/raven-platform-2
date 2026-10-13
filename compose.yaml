@@ -1,6 +1,6 @@
 services:
   raven-dashboard:
-    image: ghcr.io/mortalityreporting/mdi-dashboard:dev
+    image: ghcr.io/mortalityreporting/mdi-dashboard:latest
     # build:
     #   context: ./raven-dashboard
     #   dockerfile: Dockerfile2
