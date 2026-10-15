@@ -1,14 +1,10 @@
 services:
   raven-dashboard:
     image: ghcr.io/mortalityreporting/mdi-dashboard:latest
-    # build:
-    #   context: ./raven-dashboard
-    #   dockerfile: Dockerfile2
-    #   args:
-    #     BASE_HREF: /
     container_name: mdi-dashboard
     ports:
       - "80:80"
+    #### This can be used to override the container settings.
     # volumes:
     #   - ./config/config.json:/usr/share/nginx/html/assets/config/config.json:ro
     restart: unless-stopped
@@ -256,18 +252,15 @@ services:
         condition: service_healthy
 
   raven-import-api:
-    image: gtri/mdi-import-submit-api:latest
+    image: ghcr.io/mortalityreporting/mdi-import:latest
     container_name: raven-import-api
     ports:
       - "9999:8080"
     environment:
-      - FHIRCMS_URL=http://raven-fhir-server:9080/raven-fhir-server/fhir
-      - FHIRCMS_BASIC_USERNAME=client
-      - FHIRCMS_BASIC_PASSWORD=secret
-      - SUBMISSION_BASIC_PASSWORD=secret
-      - SUBMISSION_BASIC_USERNAME=client
-      - SUBMISSION_URL=http://raven-fhir-server:9080/raven-fhir-server/fhir
-      - MY_URL=http://localhost:9999/raven-import-and-submit-api
+      - FHIR_API_PASSWORD=secret
+      - FHIR_API_USERNAME=client
+      - FHIR_API_ENDPOINT=http://raven-fhir-server:9080/raven-fhir-server/fhir
+      - INCOMING_API_PATH=/upload-xlsx-file
     networks:
       - raven-network
 

@@ -1,6 +1,6 @@
 {
   "dashboardApiUrl": "",
-  "ravenImportApiUrl": "http://localhost:9999/raven-import-and-submit-api",
+  "ravenImportApiUrl": "http://localhost:9999/",
   "fhirValidatorUrl": "http://localhost:9888/fhir",
   "ravenFhirServer": {
     "baseUrl": "http://localhost:9080/raven-fhir-server/fhir",
