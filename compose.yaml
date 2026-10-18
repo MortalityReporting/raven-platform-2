@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
 
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    image: quay.io/keycloak/keycloak:26.8.1
     command: ["start-dev", "--import-realm"]
     environment:
       - KEYCLOAK_ADMIN=admin
@@ -23,7 +23,7 @@ services:
 
   # One PostgreSQL server hosts separate databases for Raven and Bluejay.
   postgresql:
-    image: postgres:latest
+    image: postgres:18.6
     container_name: raven-postgresql
     environment:
       POSTGRES_DB: postgres
@@ -260,6 +260,7 @@ services:
       - FHIR_API_PASSWORD=secret
       - FHIR_API_USERNAME=client
       - FHIR_API_ENDPOINT=http://raven-fhir-server:9080/raven-fhir-server/fhir
+      - FHIR_FULL_URL_BASE=http://localhost:9080/mdi-fhir-server/fhir
       - INCOMING_API_PATH=/upload-xlsx-file
     networks:
       - raven-network
