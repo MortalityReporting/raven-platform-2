@@ -3,12 +3,13 @@
 --
 
 
--- Dumped from database version 10.5 (Debian 10.5-2.pgdg90+1)
--- Dumped by pg_dump version 14.23 (Homebrew)
+-- Dumped from database version 18.6 (Debian 18.6-1.pgdg13+2)
+-- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -896,6 +897,8 @@ $_$;
 
 
 SET default_tablespace = '';
+
+SET default_table_access_method = heap;
 
 --
 -- Name: account; Type: TABLE; Schema: public; Owner: -

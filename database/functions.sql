@@ -15,6 +15,14 @@ AS $function$
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.fhirbase_create(resource jsonb)
+ RETURNS jsonb
+ LANGUAGE sql
+AS $function$
+   SELECT fhirbase_create(resource, nextval('transaction_id_seq'));
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.fhirbase_create(resource jsonb, txid bigint)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -61,11 +69,11 @@ END
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.fhirbase_create(resource jsonb)
+CREATE OR REPLACE FUNCTION public.fhirbase_delete(resource_type text, id text)
  RETURNS jsonb
  LANGUAGE sql
 AS $function$
-   SELECT fhirbase_create(resource, nextval('transaction_id_seq'));
+   SELECT fhirbase_delete(resource_type, id, nextval('transaction_id_seq'));
 $function$
 ;
 
@@ -110,14 +118,6 @@ END
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.fhirbase_delete(resource_type text, id text)
- RETURNS jsonb
- LANGUAGE sql
-AS $function$
-   SELECT fhirbase_delete(resource_type, id, nextval('transaction_id_seq'));
-$function$
-;
-
 CREATE OR REPLACE FUNCTION public.fhirbase_genid()
  RETURNS text
  LANGUAGE sql
@@ -144,6 +144,14 @@ BEGIN
 
   return result;
 END
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.fhirbase_update(resource jsonb)
+ RETURNS jsonb
+ LANGUAGE sql
+AS $function$
+   SELECT fhirbase_update(resource, nextval('transaction_id_seq'));
 $function$
 ;
 
@@ -196,14 +204,6 @@ BEGIN
   return result;
 
 END
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.fhirbase_update(resource jsonb)
- RETURNS jsonb
- LANGUAGE sql
-AS $function$
-   SELECT fhirbase_update(resource, nextval('transaction_id_seq'));
 $function$
 ;
 
