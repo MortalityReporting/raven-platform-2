@@ -10,16 +10,16 @@ services:
     restart: unless-stopped
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.8.1
-    command: ["start-dev", "--import-realm"]
+    image: raven-platform-keycloak:26.8.1
+    build:
+      context: .
+      dockerfile: Dockerfile.keycloak
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
     ports:
       - "8080:8080"
-    volumes:
-      # Mount the individual file or the entire directory
-      - ./keycloak-config/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    command: ["start-dev", "--import-realm"]
 
   # One PostgreSQL server hosts separate databases for Raven and Bluejay.
   postgresql:
@@ -72,10 +72,6 @@ services:
       AUTH_ISSUER_URL: http://host.docker.internal:8080/realms/Raven-MDI
     secrets:
       - target_password
-    volumes:
-      - ./database/schema.sql:/opt/cmsr4-schema.sql:ro
-      - ./database/functions.sql:/opt/cmsr4-functions.sql:ro
-      - ./database/data.sql:/opt/cmsr4-data.sql:ro
     networks:
       - raven-network
     entrypoint: ["/bin/bash", "-ec"]
@@ -84,8 +80,15 @@ services:
           # The application container owns creation and initialization of the
           # Raven database; no separate setup container is required.
           apt-get update && \
-            apt-get install -y --no-install-recommends postgresql-client && \
+            apt-get install -y --no-install-recommends curl postgresql-client && \
             rm -rf /var/lib/apt/lists/*
+
+          curl -fsSL https://raw.githubusercontent.com/MortalityReporting/raven-platform-2/main/database/schema.sql \
+            -o /opt/cmsr4-schema.sql
+          curl -fsSL https://raw.githubusercontent.com/MortalityReporting/raven-platform-2/main/database/functions.sql \
+            -o /opt/cmsr4-functions.sql
+          curl -fsSL https://raw.githubusercontent.com/MortalityReporting/raven-platform-2/main/database/data.sql \
+            -o /opt/cmsr4-data.sql
 
           export PGPASSWORD="$$(cat /run/secrets/target_password)"
 
@@ -176,10 +179,6 @@ services:
       AUTH_ISSUER_URL: http://host.docker.internal:8080/realms/Raven-MDI
     secrets:
       - target_password
-    volumes:
-      - ./database/schema.sql:/opt/cmsr4-schema.sql:ro
-      - ./database/functions.sql:/opt/cmsr4-functions.sql:ro
-      - ./database/data.sql:/opt/cmsr4-data.sql:ro
     networks:
       - raven-network
     entrypoint: ["/bin/bash", "-ec"]
@@ -188,8 +187,15 @@ services:
           # The application container owns creation and initialization of the
           # Bluejay database; no separate setup container is required.
           apt-get update && \
-            apt-get install -y --no-install-recommends postgresql-client && \
+            apt-get install -y --no-install-recommends curl postgresql-client && \
             rm -rf /var/lib/apt/lists/*
+
+          curl -fsSL https://raw.githubusercontent.com/MortalityReporting/raven-platform-2/main/database/schema.sql \
+            -o /opt/cmsr4-schema.sql
+          curl -fsSL https://raw.githubusercontent.com/MortalityReporting/raven-platform-2/main/database/functions.sql \
+            -o /opt/cmsr4-functions.sql
+          curl -fsSL https://raw.githubusercontent.com/MortalityReporting/raven-platform-2/main/database/data.sql \
+            -o /opt/cmsr4-data.sql
 
           export PGPASSWORD="$$(cat /run/secrets/target_password)"
 
