@@ -1,7 +1,0 @@
-FROM quay.io/keycloak/keycloak:26.8.1
-
-USER root
-ADD https://raw.githubusercontent.com/MortalityReporting/raven-platform-2/main/keycloak-config/realm-export.json /opt/keycloak/data/import/realm-export.json
-RUN chown 1000:0 /opt/keycloak/data/import/realm-export.json && \
-    chmod 0644 /opt/keycloak/data/import/realm-export.json
-USER 1000
